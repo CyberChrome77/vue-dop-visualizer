@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div id="mapid" style="height:563px; width:800px"></div>
+    <div id="mapid" style="height:512px; width:545px"></div>
   </div>
 </template>
 
@@ -8,6 +8,9 @@
 import L from 'leaflet';
 import 'leaflet-contour';
 import "leaflet/dist/leaflet.css";
+/* LeafletTest.vue is for experimenting. 
+It's basically a branch for trying different techniques values without affecting the main file
+*/
 
 export default {
   data() {
@@ -22,32 +25,24 @@ export default {
       lngMin: -181.44,
       lngMax: 181.44,
       interval: 0.72,
-      // colors: [
-      //   { color: "#0B873D", point: 0 },
-      //   { color: "#70B829", point: 0.2 },
-      //   { color: "#FFD208", point: 0.4 },
-      //   { color: "#FFF73B", point: 0.6 },
-      //   { color: "#FF7E14", point: 0.8 },
-      //   { color: "#FF0801", point: 1 }
-      // ]
       colors: [
-        { color: "#00008f", point: 0},
-        { color: "#0000ef", point: 0.11111111111},
-        { color: "#005fff", point: 0.22222222222},
-        { color: "#00cfff", point: 0.33333333333},
-        { color: "#4fffaf", point: 0.44444444444},
-        { color: "#bfff3f", point: 0.55555555556},
-        { color: "#ffcf00", point: 0.66666666667},
-        { color: "#ff5f00", point: 0.77777777778},
-        { color: "#ef0000", point: 0.88888888889},
-        { color: "#7f0000", point: 0.1},
+        { color: "#00008f", point: 0 },
+        { color: "#0000ef", point: 0.11111111111 },
+        { color: "#005fff", point: 0.22222222222 },
+        { color: "#00cfff", point: 0.33333333333 },
+        { color: "#4fffaf", point: 0.44444444444 },
+        { color: "#bfff3f", point: 0.55555555556 },
+        { color: "#ffcf00", point: 0.66666666667 },
+        { color: "#ff5f00", point: 0.77777777778 },
+        { color: "#ef0000", point: 0.88888888889 },
+        { color: "#7f0000", point: 0.1 },
 
       ]
     };
   },
   async mounted() {
     await this.generateData();
-    await this.updateZValues("/dop_output_2.txt");
+    await this.updateZValues("/dop_output_4.txt");
     this.initializeMap();
   },
   methods: {
@@ -70,7 +65,7 @@ export default {
         });
       });
       return parsedData;
-      
+
     },
     getIndices(lat, lng, latMax, lngMin, interval) {
       const i = Math.round((latMax - lat) / interval);
@@ -94,15 +89,16 @@ export default {
           rowX.push(lng);
           rowY.push(lat);
           rowZ.push(null);
-          
+
         }
 
         this.data.x.push(rowX);
         this.data.y.push(rowY);
         this.data.z.push(rowZ);
       }
-
+      
       console.log(this.data);
+
     },
     async updateZValues(filePath) {
       const parsedData = await this.parseTextFile(filePath);
@@ -175,14 +171,14 @@ export default {
         worldCopyJump: true,
         maxBounds: [
           [-90, -180],
-          [90, 180]
+          [90, 205]
         ],
         minZoom: 1,
         maxBoundsViscosity: 1,
-      }).setView([0, 0], 2);
+      }).setView([0, 0], 1);
 
       L.tileLayer(
-        "https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.{ext}",
+        "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png}",
         {
           maxZoom: 5,
           ext: 'png',
@@ -217,7 +213,7 @@ export default {
             fillOpacity: 1,
           };
         },
-        onEachFeature: this.onEachContour(),
+        onEachFeature: this.onEachContour(), //shows the mean DOP value of a contour layer
       }).addTo(map);
 
       const legend = L.control({ position: 'bottomright' });
@@ -236,7 +232,7 @@ export default {
         gradient = gradient.slice(0, -1) + ')';
 
         div.innerHTML = `
-    <div style="background: ${gradient}; height: 520px; width: 20px; position: relative;">
+    <div style="background: ${gradient}; height: 460px; width: 20px; position: relative;">
       ${grades.map((value, i) => `<div style="position: absolute; bottom: ${(i / (grades.length - 1)) * 100}%; color: white; font-size: 10px; right: 25px;">${value}</div>`).join('')}
     </div>
   `;

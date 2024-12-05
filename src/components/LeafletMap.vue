@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div id="mapid" style="height:563px; width:1000px"></div>
+    <div id="mapid" style="height:512px; width:512px"></div>
   </div>
 </template>
 
@@ -12,42 +12,41 @@ import "leaflet/dist/leaflet.css";
 export default {
   data() {
     return {
+      //setting up 2D array where x = longitude, y = latitude, and z = dop value
       data: {
         x: [],
         y: [],
         z: []
       },
+      //min & max set beyond real coordinates to compensate for leaflet-contour limitation where surrounding null values are required
       latMin: -91.44,
       latMax: 91.44,
       lngMin: -181.44,
       lngMax: 181.44,
+      //One DOP value for every 0.72 coordinate point
       interval: 0.72,
-      // colors: [
-      //   { color: "#0B873D", point: 0 },
-      //   { color: "#70B829", point: 0.2 },
-      //   { color: "#FFD208", point: 0.4 },
-      //   { color: "#FFF73B", point: 0.6 },
-      //   { color: "#FF7E14", point: 0.8 },
-      //   { color: "#FF0801", point: 1 }
-      // ]
+      //color gradient for the contour plot
       colors: [
-        { color: "#00008f", point: 0.1 },
-        { color: "#0000ef", point: 0.2},
-        { color: "#005fff", point: 0.3},
-        { color: "#00cfff", point: 0.4},
-        { color: "#4fffaf", point: 0.5},
-        { color: "#bfff3f", point: 0.6},
-        { color: "#ffcf00", point: 0.7},
-        { color: "#ff5f00", point: 0.8},
-        { color: "#ef0000", point: 0.9},
-        { color: "#7f0000", point: 0.10},
+        { color: "#00008f", point: 0 },
+        { color: "#0000ef", point: 0.11111111111 },
+        { color: "#005fff", point: 0.22222222222 },
+        { color: "#00cfff", point: 0.33333333333 },
+        { color: "#4fffaf", point: 0.44444444444 },
+        { color: "#bfff3f", point: 0.55555555556 },
+        { color: "#ffcf00", point: 0.66666666667 },
+        { color: "#ff5f00", point: 0.77777777778 },
+        { color: "#ef0000", point: 0.88888888889 },
+        { color: "#7f0000", point: 0.1 },
 
       ]
     };
   },
   async mounted() {
+    //initialize data arrays
     await this.generateData();
-    await this.updateZValues("/dop_output_2.txt");
+    //populate z array with DOP data
+    await this.updateZValues("/dop_output_3.txt");
+    //show world map
     this.initializeMap();
   },
   methods: {
@@ -66,16 +65,21 @@ export default {
           hdop: parseFloat(hdop),
           vdop: parseFloat(vdop),
           tdop: parseFloat(tdop),
-          numInView: parseFloat(numInView)
+          numInView: parseInt(numInView)
         });
       });
       return parsedData;
+
     },
+
+    //navigates through the 2d array to assign z-values
     getIndices(lat, lng, latMax, lngMin, interval) {
       const i = Math.round((latMax - lat) / interval);
       const j = Math.round((lng - lngMin) / interval);
       return { i, j };
     },
+
+    //assigns longitude, latitude, and null values into x, y, and z respectively
     generateData() {
       const numRows = Math.floor((this.latMax - this.latMin) / this.interval) + 1;
       const numCols = Math.floor((this.lngMax - this.lngMin) / this.interval) + 1;
@@ -100,9 +104,12 @@ export default {
         this.data.y.push(rowY);
         this.data.z.push(rowZ);
       }
-
+      
       console.log(this.data);
+
     },
+
+    //Changes z-values based on provided DOP data
     async updateZValues(filePath) {
       const parsedData = await this.parseTextFile(filePath);
       parsedData.forEach(({ latitude, longitude, pdop }) => {
@@ -113,6 +120,8 @@ export default {
       });
 
     },
+
+    //copied from leaflet-contour; mumbo jumbo about contour color calculation
     getColor(value, min, max, colors) {
       function hex(c) {
         var s = "0123456789abcdef";
@@ -169,6 +178,7 @@ export default {
         return `#${convertToHex(rgb)}`;
       }
     },
+    //creates the Leaflet Map
     initializeMap() {
       var map = L.map("mapid", {
         worldCopyJump: true,
@@ -178,19 +188,18 @@ export default {
         ],
         minZoom: 1,
         maxBoundsViscosity: 1,
-      }).setView([0, 0], 2);
+      }).setView([0, 0], 1);
 
       L.tileLayer(
-        "https://tiles.stadiamaps.com/tiles/stamen_toner_lite/{z}/{x}/{y}{r}.{ext}",
+        "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png}",
         {
-          maxZoom: 18,
+          maxZoom: 7,
           ext: 'png',
           tileSize: 512,
           zoomOffset: -1,
         }
       ).addTo(map);
-
-
+      //creates outline of country borders on the world map
       fetch('/worldmap.json')
         .then(response => response.json())
         .then(data => {
@@ -206,9 +215,11 @@ export default {
           });
           geojsonLayer.addTo(map);
         })
-
+      //
       L.contour(this.data, {
-        thresholds: 10,
+        //adjust number of contours on the map; adjust based on data variance
+        thresholds: 3, 
+
         style: (feature) => {
           return {
             color: this.getColor(feature.geometry.value, 1, 10, this.colors),
@@ -216,16 +227,17 @@ export default {
             fillOpacity: 1,
           };
         },
-        onEachFeature: this.onEachContour(),
+        onEachFeature: this.onEachContour(), //shows the mean DOP value of a contour layer
       }).addTo(map);
 
+      //creates the color gradient legend
       const legend = L.control({ position: 'bottomright' });
 
       legend.onAdd = function () {
         const div = L.DomUtil.create('div', 'info legend');
-        const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];  // Adjust as per threshold
+        const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];  // Adjust depending on the threshold
         const colors = [
-          "#FF0801", "#FF7E14", "#FFF73B", "#FFD208", "#70B829", "#0B873D"
+          "#7f0000", "#ef0000", "#ff5f00", "#ffcf00", "#bfff3f", "#4fffaf", "#00cfff", "#005fff", "#0000ef", "#00008f"
         ];
 
         let gradient = 'linear-gradient(to top,';
@@ -235,8 +247,8 @@ export default {
         gradient = gradient.slice(0, -1) + ')';
 
         div.innerHTML = `
-    <div style="background: ${gradient}; height: 150px; width: 20px; position: relative;">
-      ${grades.map((value, i) => `<div style="position: absolute; bottom: ${(i / (grades.length - 1)) * 100}%; color: black; font-size: 10px; right: 25px;">${value}</div>`).join('')}
+    <div style="background: ${gradient}; height: 450px; width: 15px; position: relative;">
+      ${grades.map((value, i) => `<div style="position: absolute; bottom: ${(i / (grades.length - 1)) * 100}%; color: white; font-size: 10px; right: 25px;">${value}</div>`).join('')}
     </div>
   `;
         return div;
@@ -246,8 +258,11 @@ export default {
 
     },
 
+    //Leaflet popup that should show the value (DOP) of a clicked contour
     onEachContour() {
       return function onEachFeature(feature, layer) {
+        //eslint-disable-next-line
+        let roundedDOP = Math.ceil(feature.value);
         layer.bindPopup(
           `<table>
               <tbody>
@@ -263,6 +278,6 @@ export default {
 
 <style>
 #mapid {
-  background-color: white;
+  background-color: black;
 }
 </style>
