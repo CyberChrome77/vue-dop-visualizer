@@ -35,7 +35,8 @@ export default {
         { color: "#ffcf00", point: 0.66666666667 },
         { color: "#ff5f00", point: 0.77777777778 },
         { color: "#ef0000", point: 0.88888888889 },
-        { color: "#7f0000", point: 0.1 },
+        { color: "#ef0000", point: 0.99999999999 },
+        { color: "#7f0000", point: 1.0 },
 
       ]
     };
@@ -105,7 +106,7 @@ export default {
       parsedData.forEach(({ latitude, longitude, pdop }) => {
         const { i, j } = this.getIndices(latitude, longitude, this.latMax, this.lngMin, this.interval);
         if (i >= 0 && i < this.data.z.length && j >= 0 && j < this.data.z[i].length) {
-          this.data.z[i][j] = pdop;
+          this.data.z[i][j] = Math.floor(pdop);
         }
       });
 
@@ -205,7 +206,7 @@ export default {
         })
 
       L.contour(this.data, {
-        thresholds: 10,
+        thresholds: 3,
         style: (feature) => {
           return {
             color: this.getColor(feature.geometry.value, 1, 10, this.colors),
@@ -250,7 +251,7 @@ export default {
         layer.bindPopup(
           `<table>
               <tbody>
-                <tr><td>PDOP: ${feature.value}</td></tr>
+                <tr><td>PDOP: ${Math.round((feature.value + Number.EPSILON) * 100) / 100}</td></tr>
               </tbody>
             </table>`
         );
