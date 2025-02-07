@@ -1,8 +1,18 @@
 <template>
   <div>
+    <VueDatePicker v-model="date"></VueDatePicker>
+    <p>Selected Date: {{ date }}</p>
     <div id="mapid" style="height:512px; width:545px"></div>
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue';
+import VueDatePicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css'
+
+const date = ref();
+</script>
 
 <script>
 import L from 'leaflet';
@@ -176,6 +186,8 @@ export default {
         ],
         minZoom: 1,
         maxBoundsViscosity: 1,
+        preferCanvas: true,
+        inertia: false,
       }).setView([0, 0], 1);
 
       L.tileLayer(
@@ -247,11 +259,12 @@ export default {
     onEachContour() {
       return function onEachFeature(feature, layer) {
         //eslint-disable-next-line
-        let roundedDOP = Math.ceil(feature.value);
+        let roundedDOP = Math.round(feature.value);
+        //let roundedDOP = Math.round((feature.value + Number.EPSILON) * 100) / 100
         layer.bindPopup(
           `<table>
               <tbody>
-                <tr><td>PDOP: ${Math.round((feature.value + Number.EPSILON) * 100) / 100}</td></tr>
+                <tr><td>PDOP: ${roundedDOP}</td></tr>
               </tbody>
             </table>`
         );
