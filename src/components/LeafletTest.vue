@@ -7,36 +7,33 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import VueDatePicker from '@vuepic/vue-datepicker';
-import '@vuepic/vue-datepicker/dist/main.css'
+import VueDatePicker from "@vuepic/vue-datepicker";
+import "@vuepic/vue-datepicker/dist/main.css";
 
-const date = ref();
 </script>
 
 <script>
-import L from 'leaflet';
-import 'leaflet-contour';
+import L from "leaflet";
+import "leaflet-contour";
 import "leaflet/dist/leaflet.css";
-/* LeafletTest.vue is for experimenting. 
-It's basically a branch for trying different techniques values without affecting the main file
-*/
 
 export default {
   data() {
     return {
+      date: new Date(),
       data: {
         x: [],
         y: [],
         z: []
       },
+      map: null,
       latMin: -91.44,
       latMax: 91.44,
       lngMin: -181.44,
       lngMax: 181.44,
       interval: 0.72,
       colors: [
-        { color: "#00008f", point: 0 },
+      { color: "#00008f", point: 0 },
         { color: "#0000ef", point: 0.11111111111 },
         { color: "#005fff", point: 0.22222222222 },
         { color: "#00cfff", point: 0.33333333333 },
@@ -47,36 +44,59 @@ export default {
         { color: "#ef0000", point: 0.88888888889 },
         { color: "#ef0000", point: 0.99999999999 },
         { color: "#7f0000", point: 1.0 },
-
       ]
     };
   },
   async mounted() {
-    await this.generateData();
-    await this.updateZValues("/dop_output_4.txt");
-    this.initializeMap();
+    this.generateData();
+    await this.fetchDataFromFastAPI();
+    this.$nextTick(() => {
+        this.initializeMap();
+    });
+  },
+  watch: {
+    async date(newDate) {
+      console.log("Data changed:", newDate);
+      console.log(this.data);
+      await this.fetchDataFromFastAPI();
+      this.restartMap();
+    }
   },
   methods: {
-    async parseTextFile(filePath) {
-      const response = await fetch(filePath);
-      const text = await response.text();
-      const rows = text.split("\n").filter((line) => line.trim() !== "");
-      const parsedData = [];
-      rows.forEach((row) => {
-        const [lat, lng, gdop, pdop, hdop, vdop, tdop, numInView] = row.split(/\s+/);
-        parsedData.push({
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lng),
-          gdop: parseFloat(gdop),
-          pdop: parseFloat(pdop),
-          hdop: parseFloat(hdop),
-          vdop: parseFloat(vdop),
-          tdop: parseFloat(tdop),
-          numInView: parseInt(numInView)
-        });
-      });
-      return parsedData;
+    async fetchDataFromFastAPI() {
+      try {
+        const response = await fetch("http://localhost:8000/data/dop");
+        const jsonResponse = await response.json();
+        const dopData = jsonResponse.results;
 
+        // Clear existing data
+        this.data.z.forEach(row => row.fill(null));
+
+        dopData.forEach(({time, Latitude, Longitude, PDOP }) => {
+          const lat = parseFloat(Latitude);
+          const lng = parseFloat(Longitude);
+          const pdop = parseFloat(PDOP);
+
+          // Parse the time from InfluxDB and compare it with the selected date
+          const timestamp = new Date(time); // Assuming the time is in ISO 8601 format
+          const selectedDate = new Date(this.date); // Assuming the date is selected in the date picker
+      
+          // Ensure the comparison checks if the time is close to the selected date
+          const timeDiff = Math.abs(timestamp - selectedDate);
+          const threshold = 60 * 60 * 1000; // 1 hour in milliseconds
+
+          if (timeDiff <= threshold) { // Check if the time is within the threshold (e.g., 1 hour)
+            const { i, j } = this.getIndices(lat, lng, this.latMax, this.lngMin, this.interval);
+
+            if (i >= 0 && i < this.data.z.length && j >= 0 && j < this.data.z[i].length) {
+              this.data.z[i][j] = Math.floor(pdop);
+            }
+          }
+        });
+
+      } catch (error) {
+        console.error("Error fetching data from FastAPI:", error);
+      }
     },
     getIndices(lat, lng, latMax, lngMin, interval) {
       const i = Math.round((latMax - lat) / interval);
@@ -100,25 +120,13 @@ export default {
           rowX.push(lng);
           rowY.push(lat);
           rowZ.push(null);
-
         }
 
         this.data.x.push(rowX);
         this.data.y.push(rowY);
         this.data.z.push(rowZ);
       }
-      
-      console.log(this.data);
 
-    },
-    async updateZValues(filePath) {
-      const parsedData = await this.parseTextFile(filePath);
-      parsedData.forEach(({ latitude, longitude, pdop }) => {
-        const { i, j } = this.getIndices(latitude, longitude, this.latMax, this.lngMin, this.interval);
-        if (i >= 0 && i < this.data.z.length && j >= 0 && j < this.data.z[i].length) {
-          this.data.z[i][j] = Math.floor(pdop);
-        }
-      });
 
     },
     getColor(value, min, max, colors) {
@@ -178,96 +186,89 @@ export default {
       }
     },
     initializeMap() {
-      var map = L.map("mapid", {
+      this.map = L.map("mapid", {
         worldCopyJump: true,
-        maxBounds: [
-          [-90, -180],
-          [90, 205]
-        ],
+        maxBounds: [[-90, -180], [90, 205]],
         minZoom: 1,
         maxBoundsViscosity: 1,
         preferCanvas: true,
-        inertia: false,
+        inertia: false
       }).setView([0, 0], 1);
 
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png}",
-        {
-          maxZoom: 5,
-          ext: 'png',
-          tileSize: 512,
-          zoomOffset: -1,
-        }
-      ).addTo(map);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png}", {
+        maxZoom: 5,
+        ext: "png",
+        tileSize: 512,
+        zoomOffset: -1
+      }).addTo(this.map);
 
-
-      fetch('/worldmap.json')
+      fetch("/worldmap.json")
         .then(response => response.json())
         .then(data => {
           const geojsonLayer = L.geoJSON(data, {
-            style: function () {
-              return {
-                color: "white",
-                weight: 1,
-                fillOpacity: 0,
-                interactive: false
-              };
-            }
+            style: () => ({
+              color: "white",
+              weight: 1,
+              fillOpacity: 0,
+              interactive: false
+            })
           });
-          geojsonLayer.addTo(map);
-        })
+          geojsonLayer.addTo(this.map);
+        });
 
       L.contour(this.data, {
-        thresholds: 3,
-        style: (feature) => {
-          return {
-            color: this.getColor(feature.geometry.value, 1, 10, this.colors),
-            opacity: 0,
-            fillOpacity: 1,
-          };
-        },
-        onEachFeature: this.onEachContour(), //shows the mean DOP value of a contour layer
-      }).addTo(map);
-
-      const legend = L.control({ position: 'bottomright' });
+        thresholds: 10,
+        style: feature => ({
+          color: this.getColor(feature.geometry.value, 1, 10, this.colors),
+          opacity: 0,
+          fillOpacity: 1
+        }),
+        onEachFeature: this.onEachContour()
+      }).addTo(this.map);
+      
+      const legend = L.control({ position: "bottomright" });
 
       legend.onAdd = function () {
-        const div = L.DomUtil.create('div', 'info legend');
-        const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];  // Adjust as per threshold
-        const colors = [
-          "#7f0000", "#ef0000", "#ff5f00", "#ffcf00", "#bfff3f", "#4fffaf", "#00cfff", "#005fff", "#0000ef", "#00008f"
-        ];
+        const div = L.DomUtil.create("div", "info legend");
+        const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        const colors = ["#7f0000", "#ef0000", "#ff5f00", "#ffcf00", "#bfff3f", "#4fffaf", "#00cfff", "#005fff", "#0000ef", "#00008f"];
 
-        let gradient = 'linear-gradient(to top,';
+        let gradient = "linear-gradient(to top,";
         for (let i = colors.length - 1; i >= 0; i--) {
           gradient += ` ${colors[i]},`;
         }
-        gradient = gradient.slice(0, -1) + ')';
+        gradient = gradient.slice(0, -1) + ")";
 
         div.innerHTML = `
-    <div style="background: ${gradient}; height: 460px; width: 20px; position: relative;">
-      ${grades.map((value, i) => `<div style="position: absolute; bottom: ${(i / (grades.length - 1)) * 100}%; color: white; font-size: 10px; right: 25px;">${value}</div>`).join('')}
-    </div>
-  `;
+          <div style="background: ${gradient}; height: 460px; width: 20px; position: relative;">
+            ${grades.map((value, i) => `<div style="position: absolute; bottom: ${(i / (grades.length - 1)) * 100}%; color: white; font-size: 10px; right: 25px;">${value}</div>`).join("")}
+          </div>
+        `;
         return div;
       };
 
-      legend.addTo(map);
-
+      legend.addTo(this.map);
     },
+    restartMap(){
+      if (this.map) {
+        this.map.stop();
+        this.map.eachLayer(layer => this.map.removeLayer(layer)); // Remove all layers
+        this.map.off();
+        this.map.remove(); // Properly destroy the map instance
+        this.map = null; // Clear reference // Properly remove the existing map instance
+      }
 
+      this.$nextTick(() => {
+        if (!this.map) {
+          this.initializeMap();
+        }
+      });
+      
+    },
     onEachContour() {
-      return function onEachFeature(feature, layer) {
-        //eslint-disable-next-line
-        let roundedDOP = Math.round(feature.value);
-        //let roundedDOP = Math.round((feature.value + Number.EPSILON) * 100) / 100
-        layer.bindPopup(
-          `<table>
-              <tbody>
-                <tr><td>PDOP: ${roundedDOP}</td></tr>
-              </tbody>
-            </table>`
-        );
+      return function (feature, layer) {
+        // let roundedDOP = Math.round(feature.value);
+        layer.bindPopup(`<table><tbody><tr><td>PDOP: ${feature.value}</td></tr></tbody></table>`);
       };
     }
   }
