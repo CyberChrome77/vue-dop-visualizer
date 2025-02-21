@@ -122,7 +122,7 @@ The following software must be installed on your device to run ```vue-dop-visual
 1. Navigate to where you cloned the repository locally
 
     ```
-    cd /path/to/your_directory/leaflet-vue-DOP-demo
+    cd /path/to/your_directory/vue-dop-visualizer
     ```
 
 2. Install dependencies
