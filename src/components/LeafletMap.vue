@@ -115,7 +115,7 @@ export default {
       parsedData.forEach(({ latitude, longitude, pdop }) => {
         const { i, j } = this.getIndices(latitude, longitude, this.latMax, this.lngMin, this.interval);
         if (i >= 0 && i < this.data.z.length && j >= 0 && j < this.data.z[i].length) {
-          this.data.z[i][j] = pdop;
+          this.data.z[i][j] = Math.floor(pdop);
         }
       });
 
@@ -218,7 +218,7 @@ export default {
       //
       L.contour(this.data, {
         //adjust number of contours on the map; adjust based on data variance
-        thresholds: 3, 
+        thresholds: 10, 
 
         style: (feature) => {
           return {
