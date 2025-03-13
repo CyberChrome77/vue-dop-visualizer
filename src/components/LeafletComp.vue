@@ -91,7 +91,7 @@ const generateData = () => {
         const rowY = [];
         const rowZ = [];
 
-        const lat = latMax - 1 * interval;
+        const lat = latMax - i * interval;
 
         for (let j = 0; j < numCols; j++) {
             const lng = lngMin + j * interval;
