@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div id="mapid" style="height:512px; width:512px"></div>
+  <div class="map-container">
+    <div id="mapid"></div>
   </div>
 </template>
 
@@ -276,8 +276,23 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
+.map-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
 #mapid {
+  width: 90vw;
+  height: 80vh;
+  max-width: 1200px;
+  max-height: 800px;
+  border: 5px solid gray;
   background-color: black;
+  margin: 10px auto;
+  padding: 10px
 }
 </style>

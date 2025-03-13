@@ -9,12 +9,15 @@
   },
   "dependencies": {
     "@vuepic/vue-datepicker": "^11.0.1",
+    "bootstrap": "^5.3.3",
+    "bootstrap-vue": "^2.23.1",
     "core-js": "^3.8.3",
     "leaflet": "^1.9.4",
     "leaflet-contour": "^1.0.0",
     "proj4": "^2.15.0",
     "proj4leaflet": "^1.0.2",
-    "vue": "^3.2.13"
+    "vue": "^3.2.13",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

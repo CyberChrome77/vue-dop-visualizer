@@ -1,8 +1,8 @@
 <template>
-  <div>
+  <div class="map-container">
     <VueDatePicker v-model="date"></VueDatePicker>
     <p>Selected Date: {{ date }}</p>
-    <div id="mapid" style="height:512px; width:545px"></div>
+    <div id="mapid"></div>
   </div>
 </template>
 
@@ -275,8 +275,21 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
+.map-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
 #mapid {
+  width: 80vw;
+  height: 75vh;
+  max-width: 1200px;
+  max-height: 800px;
+  border: 5px solid gray;
   background-color: black;
 }
 </style>
