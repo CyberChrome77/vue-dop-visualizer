@@ -1,13 +1,34 @@
 <template>
-    <div>
-        <VueDatePicker v-model="date"></VueDatePicker>
-        <p style="color:white;">Selected Date: {{ date }}</p>
-        <div id="mapid" style="height:512px; width:545px"></div>
+    <div class="card text-bg-dark text-center border-secondary custom-card" style="min-width: 900px">
+        <h5 class="card-header">GPS DOP Map</h5>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 text-start">
+                    <h5 class="card-title">Select Date</h5>
+                    <VueDatePicker v-model="date"></VueDatePicker>
+
+                    <p class="card-text mt-3">
+                        <strong>Selected Date (UTC):</strong> {{ formattedDateUTC }}
+                    </p>
+                    <p class="card-text">
+                        <strong>Selected Date (PST):</strong> {{ formattedDatePST }}
+                    </p>
+                    <p class="note">
+                        <strong>Note:</strong> Pacific Standard Time (PST) is UTC -8:00.  
+                        During Daylight Savings Time (PDT), it is UTC -7:00.
+                    </p>
+                </div>
+                <div class="col-md-8">
+                    <div id="mapid"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
+
 <script setup>
-import { ref, onMounted, watch, nextTick, toRaw } from 'vue'
+import { ref, computed, onMounted, watch, nextTick, toRaw } from 'vue'
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import L from "leaflet";
@@ -16,6 +37,24 @@ import "leaflet/dist/leaflet.css";
 
 const date = ref(null);
 const map = ref(null);
+
+const formattedDateUTC = computed(() => {
+    if (!date.value) return "No date selected"; // Handle null case
+    return date.value.toLocaleString("en-US", {
+        timeZone: "UTC",
+        dateStyle: "full",
+        timeStyle: "short"
+    });
+});
+
+const formattedDatePST = computed(() => {
+    if (!date.value) return "No date selected"; // Handle null case
+    return date.value.toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        dateStyle: "full",
+        timeStyle: "short"
+    });
+});
 
 const latMin = -91.44;
 const latMax = 91.44;
@@ -298,7 +337,7 @@ watch(date, async (newDate) => {
 
 </script>
 
-<style>
+<style scoped>
 .map-container {
   display: flex;
   flex-direction: column;
@@ -308,10 +347,8 @@ watch(date, async (newDate) => {
 }
 
 #mapid {
-  width: 90vw;
-  height: 80vh;
-  max-width: 545px;
-  max-height: 512px;
+  width: 545px;
+  height: 512px;
   border: 5px solid gray;
   background-color: black;
   margin: 10px auto;

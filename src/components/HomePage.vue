@@ -2,12 +2,12 @@
     <Navbar />
     <div class="container mt-4">
     <div class="row gx-4">
-      <div class="col-md-3">
+      <!-- <div class="col-md-3">
         <DatePicker @dateChanged="updateDate" />
-      </div>
+      </div> -->
 
-      <div class="col-md-8">
-        <LeafletMap :selectedDate="selectedDate" />
+      <div class="col-md-9">
+        <LeafletMap />
       </div>
     </div>
   </div>
@@ -19,7 +19,7 @@
 
 import LeafletMap from '@/components/LeafletComp.vue' //Change file name for comparison 
 import Navbar from "@/components/MainNavbar.vue";
-import DatePicker from './DatePicker.vue';
+// import DatePicker from './DatePicker.vue';
 import MainFooter from './MainFooter.vue';
 
 </script>
