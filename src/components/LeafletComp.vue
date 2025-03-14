@@ -1,20 +1,20 @@
 <template>
     <div>
         <VueDatePicker v-model="date"></VueDatePicker>
-        <p>Selected Date: {{ date }}</p>
+        <p style="color:white;">Selected Date: {{ date }}</p>
         <div id="mapid" style="height:512px; width:545px"></div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, toRaw } from 'vue'
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import L from "leaflet";
 import "leaflet-contour";
 import "leaflet/dist/leaflet.css";
 
-const date = ref(new Date());
+const date = ref(null);
 const map = ref(null);
 
 const latMin = -91.44;
@@ -41,6 +41,34 @@ const data = ref({
     y: [],
     z: []
 });
+
+const fetchLatestDate = async () => {
+    try {
+        const response = await fetch("http://localhost:8000/data/dop");
+        const jsonResponse = await response.json();
+        const dopData = jsonResponse.results;
+
+        // Find the latest date and time from the DOP data
+        let latestTime = null;
+
+        dopData.forEach(({ time }) => {
+            const timestamp = new Date(time);
+            if (!latestTime || timestamp > latestTime) {
+                latestTime = timestamp;
+            }
+        });
+
+        if (latestTime) {
+            date.value = latestTime;
+        } else {
+            // Set to current date if no data is found
+            date.value = new Date();
+        }
+    } catch (error) {
+        console.error("Error fetching the latest date from FastAPI:", error);
+        date.value = new Date();
+    }
+}
 
 const fetchDataFromFastAPI = async () => {
     try{
@@ -175,12 +203,12 @@ const initializeMap = () => {
         inertia: false
     }).setView([0, 0], 1);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png}", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
         maxZoom: 5,
         ext: "png",
         tileSize: 512,
         zoomOffset: -1
-    }).addTo(map.value);
+    }).addTo(toRaw(map.value));
 
     fetch("/worldmap.json")
         .then(response => response.json())
@@ -193,7 +221,7 @@ const initializeMap = () => {
                     interactive: false
                 })
             });
-            geojsonLayer.addTo(map.value);
+            geojsonLayer.addTo(toRaw(map.value));
         });
 
     L.contour(data.value, {
@@ -206,7 +234,7 @@ const initializeMap = () => {
             };
         },
         onEachFeature: onEachContour(),
-    }).addTo(map.value);
+    }).addTo(toRaw(map.value));
 
 
     function onEachContour() {
@@ -239,33 +267,31 @@ const initializeMap = () => {
 
     legend.addTo(map.value);
 };
-
-const restartMap = () => {
+const deleteMap = () => {
     if (map.value) {
-        map.value.stop();
-        // map.value.eachLayer(layer => map.value.removeLayer(layer));
-        // map.value.off();
         map.value.remove();
         map.value = null;
     }
-
+}
+const restartMap = () => {
+    deleteMap();
     nextTick(() => {
-        if (!map.value) {
             initializeMap();
-        }
     });
 };
 
 onMounted(async () => {
     generateData();
+    await fetchLatestDate();
     await fetchDataFromFastAPI();
     nextTick(() => {
-        initializeMap();
+        restartMap();
     })
 });
 
 watch(date, async (newDate) => {
     console.log("Date changed:", newDate);
+    deleteMap();
     await fetchDataFromFastAPI();
     restartMap();
 });
@@ -273,8 +299,23 @@ watch(date, async (newDate) => {
 </script>
 
 <style>
+.map-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
 #mapid {
-    background-color: black;
+  width: 90vw;
+  height: 80vh;
+  max-width: 545px;
+  max-height: 512px;
+  border: 5px solid gray;
+  background-color: black;
+  margin: 10px auto;
+  padding: 10px
 }
 
 </style>

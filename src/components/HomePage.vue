@@ -6,7 +6,7 @@
         <DatePicker @dateChanged="updateDate" />
       </div>
 
-      <div class="col-md-9">
+      <div class="col-md-8">
         <LeafletMap :selectedDate="selectedDate" />
       </div>
     </div>
@@ -17,7 +17,7 @@
 
 <script setup>
 
-import LeafletMap from '@/components/LeafletMap.vue' //Change file name for comparison 
+import LeafletMap from '@/components/LeafletComp.vue' //Change file name for comparison 
 import Navbar from "@/components/MainNavbar.vue";
 import DatePicker from './DatePicker.vue';
 import MainFooter from './MainFooter.vue';

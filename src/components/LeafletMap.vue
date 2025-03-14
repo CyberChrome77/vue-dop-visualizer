@@ -288,8 +288,8 @@ export default {
 #mapid {
   width: 90vw;
   height: 80vh;
-  max-width: 1200px;
-  max-height: 800px;
+  max-width: 545px;
+  max-height: 512px;
   border: 5px solid gray;
   background-color: black;
   margin: 10px auto;

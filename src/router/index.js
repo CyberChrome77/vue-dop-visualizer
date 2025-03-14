@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomePage from "@/components/HomePage.vue";
-import LeafletComp from "@/components/LeafletComp.vue";
 // eslint-disable-next-line
 import LeafletMap from "@/components/LeafletMap.vue";
+import LeafletComp from "@/components/LeafletComp.vue";
 
 const routes = [
   { path: "/", component: HomePage }, // Root path is homepage
