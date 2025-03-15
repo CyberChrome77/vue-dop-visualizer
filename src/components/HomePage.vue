@@ -7,7 +7,7 @@
       </div>
 
       <div class="col-md-9">
-        <LeafletMap :selectedDate="selectedDate" />
+        <LeafletComp :selectedDate="selectedDate" />
       </div>
     </div>
   </div>
@@ -17,7 +17,7 @@
 
 <script setup>
 
-import LeafletMap from '@/components/LeafletMap.vue' //Change file name for comparison 
+import LeafletComp from '@/components/LeafletComp.vue' //Change file name for comparison 
 import Navbar from "@/components/MainNavbar.vue";
 import DatePicker from './DatePicker.vue';
 import MainFooter from './MainFooter.vue';
