@@ -1,26 +1,21 @@
 <template>
     <div class="map-container">
-        <VueDatePicker v-model="date"></VueDatePicker>
-        <p>Selected Date: {{ date }}</p>
         <div id="mapid"></div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
-import VueDatePicker from "@vuepic/vue-datepicker";
-import "@vuepic/vue-datepicker/dist/main.css";
-import L from "leaflet";
-import "leaflet-contour";
-import "leaflet/dist/leaflet.css";
+import { ref, onMounted, watch, nextTick, defineProps } from 'vue';
+import L from 'leaflet';
+import 'leaflet-contour';
+import 'leaflet/dist/leaflet.css';
 
-const date = ref(new Date());
+const props = defineProps(['selectedDate']);
+
 const map = ref(null);
 
-const latMin = -91.44;
-const latMax = 91.44;
-const lngMin = -181.44;
-const lngMax = 181.44;
+const latMin = -91.44, latMax = 91.44;
+const lngMin = -181.44, lngMax = 181.44;
 const interval = 0.72;
 
 const colors = ref([
@@ -37,44 +32,8 @@ const colors = ref([
 ]);
 
 const data = ref({
-    x: [],
-    y: [],
-    z: []
+    x: [], y: [], z: []
 });
-
-const fetchDataFromFastAPI = async () => {
-    try{
-        const response = await fetch("http://localhost:8000/data/dop");
-        const jsonResponse = await response.json();
-        const dopData = jsonResponse.results;
-
-        data.value.z.forEach(row => row.fill(null));
-
-        dopData.forEach(({ time, Latitude, Longitude, PDOP }) => {
-            const lat = parseFloat(Latitude);
-            const lng = parseFloat(Longitude);
-            const pdop = parseFloat(PDOP);
-        
-            const timestamp = new Date(time);
-            const selectedDate = new Date(date.value);
-            
-            const timeDiff = Math.abs(timestamp - selectedDate);
-            const threshold = 60*60*1000; //1 hour
-
-            if (timeDiff <= threshold) {
-                const { i, j } = getIndices(lat, lng, latMax, lngMin, interval);
-
-                if (i >= 0 && i < data.value.z.length && j >= 0 && j < data.value.z[i].length) {
-                    data.value.z[i][j] = Math.floor(pdop);
-                }
-
-            }
-        });
-
-    } catch (error) {
-        console.error("Error fetching data from FastAPI:", error);
-    }
-};
 
 const getIndices = (lat, lng, latMax, lngMin, interval) => {
     const i = Math.round((latMax - lat) / interval);
@@ -95,7 +54,7 @@ const generateData = () => {
 
         for (let j = 0; j < numCols; j++) {
             const lng = lngMin + j * interval;
-            
+
             rowX.push(lng);
             rowY.push(lat);
             rowZ.push(null);
@@ -210,10 +169,10 @@ const initializeMap = () => {
 
 
     function onEachContour() {
-      return function (feature, layer) {
-        // let roundedDOP = Math.round(feature.value);
-        layer.bindPopup(`<table><tbody><tr><td>PDOP: ${feature.value}</td></tr></tbody></table>`);
-      };
+        return function (feature, layer) {
+            // let roundedDOP = Math.round(feature.value);
+            layer.bindPopup(`<table><tbody><tr><td>PDOP: ${feature.value}</td></tr></tbody></table>`);
+        };
     }
 
     const legend = L.control({ position: "bottomright" });
@@ -256,40 +215,85 @@ const restartMap = () => {
     });
 };
 
+
+const fetchDataFromFastAPI = async () => {
+    try {
+        const response = await fetch("http://localhost:8000/data/dop");
+        const jsonResponse = await response.json();
+        const dopData = jsonResponse.results;
+
+        data.value.z.forEach(row => row.fill(null));
+
+        dopData.forEach(({ time, Latitude, Longitude, PDOP }) => {
+            const lat = parseFloat(Latitude);
+            const lng = parseFloat(Longitude);
+            const pdop = parseFloat(PDOP);
+
+            const timestamp = new Date(time);
+            const selectedDate = new Date(props.selectedDate);
+
+            const timeDiff = Math.abs(timestamp - selectedDate);
+            const threshold = 60 * 60 * 1000; //1 hour
+
+            if (timeDiff <= threshold) {
+                const { i, j } = getIndices(lat, lng, latMax, lngMin, interval);
+
+                if (i >= 0 && i < data.value.z.length && j >= 0 && j < data.value.z[i].length) {
+                    data.value.z[i][j] = Math.floor(pdop);
+                }
+
+            }
+        });
+
+    } catch (error) {
+        console.error("Error fetching data from FastAPI:", error);
+    }
+};
+
+const generateDOP = async (selectedDate) => {
+    try {
+        const formattedDate = new Date(selectedDate).toISOString().split('.')[0] + "Z";
+        console.log(`Generating DOP data for ${formattedDate}`);
+        await fetch(`http://localhost:8000/generate-dop?date=${formattedDate}`);
+    } catch (error) {
+        console.error("Error generating DOP data:", error);
+    }
+};
+
 onMounted(async () => {
     generateData();
+    await generateDOP(props.selectedDate);
     await fetchDataFromFastAPI();
     nextTick(() => {
         initializeMap();
-    })
+    });
 });
 
-watch(date, async (newDate) => {
-    console.log("Date changed:", newDate);
+watch(() => props.selectedDate, async (newDate) => {
+    await generateDOP(newDate);
     await fetchDataFromFastAPI();
     restartMap();
+    console.log("Refreshed map for: ", newDate)
 });
-
 </script>
 
 <style>
 .map-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
 }
 
 #mapid {
-  width: 90vw;
-  height: 80vh;
-  max-width: 1200px;
-  max-height: 800px;
-  border: 5px solid gray;
-  background-color: black;
-  margin: 10px auto;
-  padding: 10px
+    width: 90vw;
+    height: 80vh;
+    max-width: 1200px;
+    max-height: 800px;
+    border: 5px solid gray;
+    background-color: black;
+    margin: 10px auto;
+    padding: 10px
 }
-
 </style>

@@ -17,6 +17,8 @@
             <p class="note">
           <strong>Note:</strong> Pacific Standard Time (PST) is UTC -8:00.  
             During Daylight Savings Time (PDT), it is UTC -7:00.
+            <br>
+            Date/Time is rounded down to the nearest hour.
         </p>
         </div>
     </div>
@@ -27,7 +29,13 @@ import { ref, computed, defineEmits } from "vue";
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 
-const selectedDate = ref(new Date()); // Default to latest date
+
+const roundDownToHour = (date) => {
+    date.setMinutes(0, 0, 0);
+    return new Date(date);  // Ensure it remains a Date object
+};
+
+const selectedDate = ref(roundDownToHour(new Date()));
 const emit = defineEmits(["dateChanged"]);
 
 // Compute Selected Date in UTC
