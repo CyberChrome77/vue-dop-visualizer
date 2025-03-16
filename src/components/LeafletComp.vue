@@ -1,6 +1,11 @@
 <template>
     <div class="map-container">
-        <div id="mapid"></div>
+        <div v-if="loading" class="loading-overlay">
+            <div class="spinner"></div>
+            <p>{{ spinnerText }} {{ props.selectedDate }}...</p>
+        </div>
+        <div id="mapid">
+        </div>
     </div>
 </template>
 
@@ -10,9 +15,11 @@ import L from 'leaflet';
 import 'leaflet-contour';
 import 'leaflet/dist/leaflet.css';
 
+const loading = ref(true)
 const props = defineProps(['selectedDate']);
 
 const map = ref(null);
+const spinnerText = ref(null);
 
 const latMin = -91.44, latMax = 91.44;
 const lngMin = -181.44, lngMax = 181.44;
@@ -218,6 +225,12 @@ const restartMap = () => {
 
 const fetchDataFromFastAPI = async () => {
     try {
+        loading.value = true;
+        spinnerText.value = "Fetching DOP data for...";
+        setTimeout(function () {
+            spinnerText.value = "Initializing Leaflet Map for...";
+        }, 50000);
+
         const response = await fetch("http://localhost:8000/data/dop");
         const jsonResponse = await response.json();
         const dopData = jsonResponse.results;
@@ -244,6 +257,7 @@ const fetchDataFromFastAPI = async () => {
 
             }
         });
+        loading.value = false;
 
     } catch (error) {
         console.error("Error fetching data from FastAPI:", error);
@@ -254,6 +268,7 @@ const generateDOP = async (selectedDate) => {
     try {
         const formattedDate = new Date(selectedDate).toISOString().split('.')[0] + "Z";
         console.log(`Generating DOP data for ${formattedDate}`);
+        spinnerText.value = "Generating DOP data for...";
         await fetch(`http://localhost:8000/generate-dop?date=${formattedDate}`);
     } catch (error) {
         console.error("Error generating DOP data:", error);
@@ -262,38 +277,81 @@ const generateDOP = async (selectedDate) => {
 
 onMounted(async () => {
     generateData();
+    loading.value = true;
     await generateDOP(props.selectedDate);
     await fetchDataFromFastAPI();
     nextTick(() => {
         initializeMap();
+        loading.value = false;
     });
+    console.log("Initialized map for: ", props.selectedDate);
 });
 
 watch(() => props.selectedDate, async (newDate) => {
+    loading.value = true;
     await generateDOP(newDate);
     await fetchDataFromFastAPI();
     restartMap();
+    loading.value = false;
     console.log("Refreshed map for: ", newDate)
 });
 </script>
 
 <style>
-.map-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+#mapid {
     width: 100%;
+    height: 100%;
+    min-height: 500px;
+    background-color: black
 }
 
-#mapid {
+.map-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 90vw;
     height: 80vh;
     max-width: 1200px;
     max-height: 800px;
     border: 5px solid gray;
-    background-color: black;
     margin: 10px auto;
-    padding: 10px
+    padding: 10px;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 999;
+    background: rgba(0, 0, 0, 0);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-top: 5px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 </style>
