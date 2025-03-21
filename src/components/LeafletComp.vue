@@ -10,7 +10,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick, defineProps } from 'vue';
+import { ref, onMounted, watch, nextTick, defineProps, toRaw } from 'vue';
 import L from 'leaflet';
 import 'leaflet-contour';
 import 'leaflet/dist/leaflet.css';
@@ -146,7 +146,7 @@ const initializeMap = () => {
         ext: "png",
         tileSize: 512,
         zoomOffset: -1
-    }).addTo(map.value);
+    }).addTo(toRaw(map.value));
 
     fetch("/worldmap.json")
         .then(response => response.json())
@@ -159,7 +159,7 @@ const initializeMap = () => {
                     interactive: false
                 })
             });
-            geojsonLayer.addTo(map.value);
+            geojsonLayer.addTo(toRaw(map.value));
         });
 
     L.contour(data.value, {
@@ -172,7 +172,7 @@ const initializeMap = () => {
             };
         },
         onEachFeature: onEachContour(),
-    }).addTo(map.value);
+    }).addTo(toRaw(map.value));
 
 
     function onEachContour() {
@@ -203,22 +203,36 @@ const initializeMap = () => {
         return div;
     };
 
-    legend.addTo(map.value);
+    legend.addTo(toRaw(map.value));
 };
 
-const restartMap = () => {
+// const restartMap = () => {
+//     if (map.value) {
+//         map.value.stop();
+//         // map.value.eachLayer(layer => map.value.removeLayer(layer));
+//         // map.value.off();
+//         map.value.remove();
+//         map.value = null;
+//     }
+
+//     nextTick(() => {
+//         if (!map.value) {
+//             initializeMap();
+//         }
+//     });
+// };
+
+const deleteMap = () => {
     if (map.value) {
-        map.value.stop();
-        // map.value.eachLayer(layer => map.value.removeLayer(layer));
-        // map.value.off();
         map.value.remove();
         map.value = null;
     }
+}
 
+const restartMap = () => {
+    deleteMap();
     nextTick(() => {
-        if (!map.value) {
             initializeMap();
-        }
     });
 };
 
@@ -281,13 +295,14 @@ onMounted(async () => {
     await generateDOP(props.selectedDate);
     await fetchDataFromFastAPI();
     nextTick(() => {
-        initializeMap();
+        restartMap();
         loading.value = false;
     });
     console.log("Initialized map for: ", props.selectedDate);
 });
 
 watch(() => props.selectedDate, async (newDate) => {
+    deleteMap();
     loading.value = true;
     await generateDOP(newDate);
     await fetchDataFromFastAPI();
