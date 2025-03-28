@@ -232,7 +232,7 @@ const deleteMap = () => {
 const restartMap = () => {
     deleteMap();
     nextTick(() => {
-            initializeMap();
+        initializeMap();
     });
 };
 
@@ -241,11 +241,8 @@ const fetchDataFromFastAPI = async () => {
     try {
         loading.value = true;
         spinnerText.value = "Fetching DOP data for...";
-        setTimeout(function () {
-            spinnerText.value = "Initializing Leaflet Map for...";
-        }, 50000);
-
-        const response = await fetch("http://localhost:8000/data/dop");
+        const formattedDate = new Date(props.selectedDate).toISOString().split('.')[0] + "Z";
+        const response = await fetch(`http://localhost:8000/data/dop?date=${formattedDate}`);
         const jsonResponse = await response.json();
         const dopData = jsonResponse.results;
 
@@ -281,9 +278,13 @@ const fetchDataFromFastAPI = async () => {
 const generateDOP = async (selectedDate) => {
     try {
         const formattedDate = new Date(selectedDate).toISOString().split('.')[0] + "Z";
-        console.log(`Generating DOP data for ${formattedDate}`);
-        spinnerText.value = "Generating DOP data for...";
-        await fetch(`http://localhost:8000/generate-dop?date=${formattedDate}`);
+        console.log(`Checking/generating DOP data for ${formattedDate}`);
+        spinnerText.value = "Checking/generating DOP data for...";
+
+        const response = await fetch(`http://localhost:8000/generate-dop?date=${formattedDate}`);
+        const result = await response.json();
+
+        console.log(result.message);
     } catch (error) {
         console.error("Error generating DOP data:", error);
     }
