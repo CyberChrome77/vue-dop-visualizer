@@ -10,7 +10,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick, defineProps } from 'vue';
+import { ref, onMounted, watch, nextTick, defineProps, toRaw } from 'vue';
 import L from 'leaflet';
 import 'leaflet-contour';
 import 'leaflet/dist/leaflet.css';
@@ -146,7 +146,7 @@ const initializeMap = () => {
         ext: "png",
         tileSize: 512,
         zoomOffset: -1
-    }).addTo(map.value);
+    }).addTo(toRaw(map.value));
 
     fetch("/worldmap.json")
         .then(response => response.json())
@@ -159,7 +159,7 @@ const initializeMap = () => {
                     interactive: false
                 })
             });
-            geojsonLayer.addTo(map.value);
+            geojsonLayer.addTo(toRaw(map.value));
         });
 
     L.contour(data.value, {
@@ -172,7 +172,7 @@ const initializeMap = () => {
             };
         },
         onEachFeature: onEachContour(),
-    }).addTo(map.value);
+    }).addTo(toRaw(map.value));
 
 
     function onEachContour() {
@@ -203,22 +203,36 @@ const initializeMap = () => {
         return div;
     };
 
-    legend.addTo(map.value);
+    legend.addTo(toRaw(map.value));
 };
 
-const restartMap = () => {
+// const restartMap = () => {
+//     if (map.value) {
+//         map.value.stop();
+//         // map.value.eachLayer(layer => map.value.removeLayer(layer));
+//         // map.value.off();
+//         map.value.remove();
+//         map.value = null;
+//     }
+
+//     nextTick(() => {
+//         if (!map.value) {
+//             initializeMap();
+//         }
+//     });
+// };
+
+const deleteMap = () => {
     if (map.value) {
-        map.value.stop();
-        // map.value.eachLayer(layer => map.value.removeLayer(layer));
-        // map.value.off();
         map.value.remove();
         map.value = null;
     }
+}
 
+const restartMap = () => {
+    deleteMap();
     nextTick(() => {
-        if (!map.value) {
-            initializeMap();
-        }
+        initializeMap();
     });
 };
 
@@ -227,11 +241,8 @@ const fetchDataFromFastAPI = async () => {
     try {
         loading.value = true;
         spinnerText.value = "Fetching DOP data for...";
-        setTimeout(function () {
-            spinnerText.value = "Initializing Leaflet Map for...";
-        }, 50000);
-
-        const response = await fetch("http://localhost:8000/data/dop");
+        const formattedDate = new Date(props.selectedDate).toISOString().split('.')[0] + "Z";
+        const response = await fetch(`http://localhost:8000/data/dop?date=${formattedDate}`);
         const jsonResponse = await response.json();
         const dopData = jsonResponse.results;
 
@@ -267,9 +278,13 @@ const fetchDataFromFastAPI = async () => {
 const generateDOP = async (selectedDate) => {
     try {
         const formattedDate = new Date(selectedDate).toISOString().split('.')[0] + "Z";
-        console.log(`Generating DOP data for ${formattedDate}`);
-        spinnerText.value = "Generating DOP data for...";
-        await fetch(`http://localhost:8000/generate-dop?date=${formattedDate}`);
+        console.log(`Checking/generating DOP data for ${formattedDate}`);
+        spinnerText.value = "Checking/generating DOP data for...";
+
+        const response = await fetch(`http://localhost:8000/generate-dop?date=${formattedDate}`);
+        const result = await response.json();
+
+        console.log(result.message);
     } catch (error) {
         console.error("Error generating DOP data:", error);
     }
@@ -281,13 +296,14 @@ onMounted(async () => {
     await generateDOP(props.selectedDate);
     await fetchDataFromFastAPI();
     nextTick(() => {
-        initializeMap();
+        restartMap();
         loading.value = false;
     });
     console.log("Initialized map for: ", props.selectedDate);
 });
 
 watch(() => props.selectedDate, async (newDate) => {
+    deleteMap();
     loading.value = true;
     await generateDOP(newDate);
     await fetchDataFromFastAPI();
