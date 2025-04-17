@@ -4,7 +4,18 @@
   </div>
 </template>
 
+<<<<<<< Updated upstream
 <script setup>
+=======
+<script>
+import LeafletMap from './components/LeafletMap.vue' //Change file name for comparison 
+
+export default {
+  components: {
+    LeafletMap
+  }
+}
+>>>>>>> Stashed changes
 </script>
 
 <style>
